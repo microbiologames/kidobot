@@ -55,6 +55,10 @@ class Stt:
     calcul: str = "int8"
     binaire: str = "whisper-cli"
     modele_gguf: str = ""
+    # backend = "distant" : la transcription tourne sur le PC de la maison.
+    url: str = "http://127.0.0.1:8100"
+    jeton: str = ""
+    timeout_s: int = 30
 
 
 @dataclass(frozen=True)
@@ -88,6 +92,14 @@ class Tts:
     binaire: str = "piper"
     voix: str = ""
     vitesse: float = 1.0
+    # backend = "distant" : la synthese tourne sur le PC de la maison.
+    url: str = "http://127.0.0.1:8100"
+    jeton: str = ""
+    timeout_s: int = 20
+    # Voix de repli quand le serveur ne repond pas. espeak-ng est laid mais il
+    # est minuscule, instantane et toujours la : une boite muette passe pour
+    # cassee, une boite qui parle mal passe pour enrhumee.
+    secours: str = "espeak"
 
 
 @dataclass(frozen=True)

@@ -7,12 +7,14 @@ reseau. Cela change completement la conversation avec les parents.
 
 from __future__ import annotations
 
+import io
 import logging
 import subprocess
 import tempfile
 import wave
 from pathlib import Path
 
+import httpx
 import numpy as np
 
 from .config import Stt as ConfStt
@@ -77,6 +79,41 @@ class WhisperCpp(SttBase):
             return res.stdout.strip()
 
 
+class SttDistant(SttBase):
+    """La transcription tourne sur le PC de la maison.
+
+    C'est ce qui permet de descendre la boite jusqu'au Pi Zero 2 W : whisper
+    est de loin la brique la plus lourde du pipeline, et c'est aussi celle qui
+    profite le plus d'une vraie machine (un modele `large` comprend nettement
+    mieux une voix d'enfant qu'un `base`, et c'est le premier mode d'echec de
+    l'objet). On envoie le WAV complet apres le relachement du bouton, pas un
+    flux : une requete unique est bien plus robuste au wifi 2,4 GHz encombre
+    qu'un streaming continu.
+    """
+
+    def __init__(self, conf: ConfStt) -> None:
+        self.conf = conf
+
+    def transcrire(self, audio: np.ndarray, frequence: int, langue: str) -> str:
+        tampon = io.BytesIO()
+        _ecrire_wav_flux(tampon, audio, frequence)
+        entetes = {"Content-Type": "audio/wav", "X-Langue": langue}
+        if self.conf.jeton:
+            entetes["Authorization"] = f"Bearer {self.conf.jeton}"
+        try:
+            r = httpx.post(
+                f"{self.conf.url}/stt",
+                content=tampon.getvalue(),
+                headers=entetes,
+                timeout=self.conf.timeout_s,
+            )
+            r.raise_for_status()
+            return r.json().get("texte", "").strip()
+        except Exception as exc:
+            log.error("transcription distante indisponible: %s", exc)
+            return ""
+
+
 class SttFactice(SttBase):
     def __init__(self, texte: str = "Pourquoi le ciel est bleu ?") -> None:
         self.texte = texte
@@ -86,8 +123,13 @@ class SttFactice(SttBase):
 
 
 def ecrire_wav(chemin: Path, audio: np.ndarray, frequence: int) -> None:
+    with open(chemin, "wb") as f:
+        _ecrire_wav_flux(f, audio, frequence)
+
+
+def _ecrire_wav_flux(flux, audio: np.ndarray, frequence: int) -> None:
     pcm = np.clip(audio, -1.0, 1.0)
-    with wave.open(str(chemin), "wb") as f:
+    with wave.open(flux, "wb") as f:
         f.setnchannels(1)
         f.setsampwidth(2)
         f.setframerate(frequence)
@@ -108,6 +150,8 @@ def _reechantillonner(audio: np.ndarray, source: int, cible: int) -> np.ndarray:
 def fabriquer(conf: ConfStt) -> SttBase:
     if conf.backend == "factice":
         return SttFactice()
+    if conf.backend == "distant":
+        return SttDistant(conf)
     if conf.backend == "whisper-cpp":
         return WhisperCpp(conf)
     try:

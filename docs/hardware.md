@@ -1,11 +1,104 @@
 # Matériel
 
+## 0. Jusqu'où peut-on descendre la Pi ?
+
+Tout dépend d'une seule question : **la boîte garde-t-elle whisper ?**
+
+C'est whisper, pas le LLM, qui fixe le plancher matériel. Une fois le LLM
+déporté sur le PC de la maison, la transcription devient de loin la tâche la
+plus lourde qui reste dans la boîte — et c'est aussi celle qui gagne le plus à
+être déportée à son tour.
+
+| Répartition | La boîte fait | Plancher | Prix carte |
+|---|---|---|---|
+| **A. Boîte autonome** | micro, whisper, piper, HP | **Pi 4 2 Go** | ~45 € |
+| **B. Client léger** | micro, HP, bouton | **Pi Zero 2 W** | ~18 € |
+
+### A. La boîte garde whisper et piper
+
+Plancher : **Raspberry Pi 4 2 Go**, avec `stt.modele = "base"` et une voix
+piper `low`. Sur Pi 4 la transcription dépasse le temps réel dès le modèle
+`small`, et piper traîne sur les voix `medium` — donc on descend d'un cran sur
+les deux. 1 Go de RAM suffirait, mais 2 Go coûtent 5 € de plus et évitent de
+compter les octets.
+
+En dessous, ça ne passe pas : un Pi Zero 2 W ou un Pi 3 sont trop justes pour
+whisper *et* piper (piper y tourne « loin du temps réel »), et 512 Mo de RAM
+rendent tout marginal.
+
+### B. La boîte n'est plus qu'un micro et un haut-parleur
+
+Plancher : **Raspberry Pi Zero 2 W**, 15-18 €. Elle capte le son, l'envoie au
+PC, et joue ce qui revient. C'est `serveur/kidobot_serveur.py` qui fait le
+travail à l'autre bout.
+
+**Et c'est meilleur sur presque tous les axes, pas seulement moins cher :**
+
+- **La latence s'effondre.** whisper était le terme dominant du budget (2 s sur
+  Pi 5, 3 s sur Pi 4). Sur un PC, même sans GPU, c'est 0,3 à 0,5 s. Le premier
+  son passe d'environ 4,5 s à environ 1,5 s. C'est un objet différent.
+- **La compréhension monte d'un cran.** Vous pouvez faire tourner `large-v3`
+  au lieu de `base`. Or la voix d'un enfant est sous-représentée dans les
+  données d'entraînement de whisper : les questions mal comprises sont le
+  premier mode d'échec de l'objet, et c'est exactement ce que ce changement
+  corrige.
+- **Plus de ventilateur.** Le refroidisseur actif du Pi 5 est audible dans une
+  chambre. Le Zero 2 W se refroidit passivement, en silence. Pour un objet posé
+  sur une table de chevet, ce n'est pas un détail.
+- **Boîtier plus petit, 2 W au lieu de 8**, batterie enfin réaliste, pas de
+  fentes d'aération à découper.
+
+Ce qu'on perd :
+
+- **Le son brut traverse le réseau local.** Il reste chez vous, sur votre
+  machine — mais ce n'est plus « la voix ne quitte jamais la boîte ». Mettez un
+  `jeton` partagé dans la configuration : votre réseau domestique héberge aussi
+  des objets connectés et des invités.
+- **La boîte ne fonctionne plus sans le PC.** Atténué par la voix de secours :
+  `tts.secours = "espeak"` fait qu'elle dit toujours quelque chose, même moche,
+  plutôt que de rester muette.
+- **Le wifi du Zero 2 W est en 2,4 GHz uniquement.** Sans conséquence ici : on
+  envoie un WAV complet après le relâchement du bouton (~150 Ko), pas un flux
+  continu. C'est précisément pour ça que le protocole est en requête/réponse.
+
+### Le pas d'après, pour information
+
+Si l'on pousse la logique du client léger jusqu'au bout, la carte suivante est
+un **ESP32-S3** (~10 €, quelques dizaines de mA). C'est ce que font les objets
+commerciaux. Mais on quitte Python pour du firmware C, et ce dépôt ne vous sert
+plus à rien : c'est un autre projet, à ne considérer que si vous en fabriquez
+plusieurs.
+
+### Recommandation
+
+**Pi Zero 2 W en client léger**, puisque vous avez tranché pour la qualité :
+c'est la configuration la moins chère, la plus rapide, la plus silencieuse, et
+celle qui comprend le mieux votre enfant. Gardez juste un Pi 4 ou 5 sous la
+main si vous voulez pouvoir tester le mode autonome un jour.
+
+---
+
 ## 1. Nomenclature
 
 Prix indicatifs TTC, hors frais de port. Convertissez en « ce que vous avez
 déjà dans un tiroir » partout où c'est possible.
 
-### Version recommandée — ~200 €
+### Version client léger — ~90 € (recommandée avec un PC dans la maison)
+
+| # | Pièce | Prix |
+|---|---|---|
+| 1 | Raspberry Pi Zero 2 W (avec header soudé) | 18 € |
+| 2 | ReSpeaker 2-Mics Pi HAT v2 | 17 € |
+| 3 | Haut-parleur 3 W 4 Ω, ⌀ 50 mm | 5 € |
+| 4 | Bouton arcade lumineux 60 mm | 6 € |
+| 5 | microSD A2 32 Go | 8 € |
+| 6 | Alimentation micro-USB 2,5 A | 8 € |
+| 7 | Boîtier contreplaqué 6 mm + visserie | 25 € |
+
+**Total ≈ 87 €**, sans ventilateur, sans SSD, sans dissipateur. Le PC de la
+maison fait la transcription, le modèle et la synthèse.
+
+### Version autonome — ~200 €
 
 | # | Pièce | Réf. typique | Prix |
 |---|---|---|---|
@@ -22,22 +115,12 @@ déjà dans un tiroir » partout où c'est possible.
 
 **Total ≈ 198 €**
 
-### Version minimale — ~120 €
+### Version bricolage — ~60 €, avec ce que vous avez déjà
 
-Pour l'étape 1, quand vous voulez juste un objet qui marche :
-
-| Pièce | Prix |
-|---|---|
-| Raspberry Pi 4 4 Go (ou un Pi 5 d'occasion) | 45 € |
-| Micro USB à condensateur (type Samson Go, ou une webcam) | 20 € |
-| Mini-enceinte USB ou jack alimentée | 15 € |
-| Bouton arcade 60 mm + 2 fils Dupont | 6 € |
-| Carte microSD A2 64 Go | 12 € |
-| Boîte à chaussures | 0 € |
-
-Le Pi 4 ne fera pas tourner un LLM correctement (comptez 1,5 tok/s sur un 3B),
-mais il fait très bien tourner whisper `base` + piper. Utilisez-le en mode
-`llm.backend = "claude"` ou en client d'un `llama-server` sur le réseau.
+Pour l'étape 1, quand vous voulez juste un objet qui marche ce week-end :
+n'importe quelle Pi qui traîne, un micro USB (ou une vieille webcam), une
+mini-enceinte, un bouton, et une boîte à chaussures. En mode client léger,
+même une Pi 3 fait l'affaire.
 
 ## 1 bis. « Et les accélérateurs qu'on branche sur le Pi ? »
 

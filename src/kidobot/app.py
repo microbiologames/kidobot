@@ -71,6 +71,10 @@ class Kidobot:
     def un_tour(self) -> Echange:
         debut = time.monotonic()
         echange = Echange()
+        # Chaque question retente la voix principale : le PC de la maison a pu
+        # se rallumer depuis la derniere fois.
+        if isinstance(self.tts, tts.TtsAvecSecours):
+            self.tts.reinitialiser()
 
         verdict = self.gardien.verifier_horaire()
         if not verdict.autorise:

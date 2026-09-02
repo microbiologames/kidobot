@@ -1,0 +1,20 @@
+# A installer sur le PC de la maison, PAS sur la boite.
+[Unit]
+Description=Kidobot : transcription et voix pour la boite a questions
+After=network.target
+
+[Service]
+Type=simple
+User=kidobot
+WorkingDirectory=/opt/kidobot
+EnvironmentFile=/etc/kidobot-serveur.env
+ExecStart=/opt/kidobot/.venv/bin/python /opt/kidobot/serveur/kidobot_serveur.py \
+    --modele-whisper large-v3 \
+    --peripherique auto \
+    --voix /opt/kidobot/models/piper/fr_FR-siwis-medium.onnx \
+    --jeton ${KIDOBOT_JETON}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

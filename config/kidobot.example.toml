@@ -43,7 +43,12 @@ duree_max_question_s = 15
 # Cerveau
 # --------------------------------------------------------------------------
 [stt]
-backend = "faster-whisper"  # "faster-whisper" | "whisper-cpp" | "factice"
+# "distant" = la transcription tourne sur le PC de la maison. C'est ce qui
+# permet de descendre la boite jusqu'au Pi Zero 2 W, et d'utiliser un modele
+# large-v3 qui comprend bien mieux une voix d'enfant.
+backend = "faster-whisper"  # "faster-whisper" | "whisper-cpp" | "distant" | "factice"
+url = "http://192.168.1.20:8100"   # backend = "distant" uniquement
+jeton = ""                          # secret partage avec le serveur
 modele = "small"            # tiny | base | small  (small = bon compromis sur Pi 5)
 calcul = "int8"
 # Uniquement pour backend = "whisper-cpp"
@@ -77,10 +82,16 @@ timeout_s = 30
 # La cle se lit dans l'environnement : ANTHROPIC_API_KEY
 
 [tts]
-backend = "piper"           # "piper" | "espeak" | "factice"
+backend = "piper"           # "piper" | "espeak" | "distant" | "factice"
 binaire = "piper"
 voix = "models/piper/fr_FR-siwis-medium.onnx"
 vitesse = 1.0
+url = "http://192.168.1.20:8100"   # backend = "distant" uniquement
+jeton = ""
+# Voix de repli si le serveur ne repond pas (backend "distant" seulement).
+# espeak-ng est laid mais local et instantane : une boite muette passe pour
+# cassee, une boite qui parle mal passe pour enrhumee.
+secours = "espeak"
 
 # --------------------------------------------------------------------------
 # Garde-fous

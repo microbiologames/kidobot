@@ -129,16 +129,19 @@ ordres de grandeur à confirmer chez vous, `kidobot --diagnostic` et les temps
 journalisés vous donneront vos vrais chiffres (détail dans
 [docs/architecture.md](docs/architecture.md)) :
 
-| Étape | Dans la boîte | LAN / API |
-|---|---|---|
-| Transcription (whisper small int8) | 2,0 s | 2,0 s |
-| Premier token | 0,3 s | 0,8 s |
-| Première phrase générée | 1,7 s | 0,3 s |
-| Synthèse de la première phrase | 0,6 s | 0,6 s |
-| **Premier son** | **~4,6 s** | **~3,7 s** |
+| Étape | Tout dans la boîte | LLM déporté | Tout déporté |
+|---|---|---|---|
+| Transcription | 2,0 s | 2,0 s | **0,4 s** |
+| Premier token | 0,3 s | 0,3 s | 0,3 s |
+| Première phrase générée | 1,7 s | 0,3 s | 0,3 s |
+| Synthèse de la première phrase | 0,6 s | 0,6 s | 0,2 s |
+| **Premier son** | **~4,6 s** | **~3,2 s** | **~1,2 s** |
 
-La transcription domine. Si vous voulez gagner une seconde, c'est là qu'il faut
-chercher (modèle `base` au lieu de `small`), pas sur le LLM.
+**La transcription domine tant qu'elle reste dans la boîte.** C'est pour ça que
+déporter aussi whisper et piper sur le PC de la maison (colonne de droite) fait
+plus pour la latence que tout ce qu'on peut faire sur le LLM — et permet en
+prime d'utiliser un modèle `large-v3`, qui comprend nettement mieux une voix
+d'enfant. Voir [docs/hardware.md §0](docs/hardware.md).
 
 ---
 
@@ -146,7 +149,21 @@ chercher (modèle `base` au lieu de `small`), pas sur le LLM.
 
 Liste complète, câblage et alternatives : **[docs/hardware.md](docs/hardware.md)**.
 
-Version courte, ~200 € :
+Le plancher dépend d'une seule question : **la boîte garde-t-elle whisper ?**
+C'est lui, pas le LLM, qui fixe le matériel.
+
+| Répartition | La boîte fait | Plancher | Total |
+|---|---|---|---|
+| Boîte autonome | micro, whisper, piper, LLM | Pi 5 8 Go | ~200 € |
+| LLM déporté | micro, whisper, piper | Pi 4 2 Go | ~150 € |
+| **Client léger** | micro, haut-parleur, bouton | **Pi Zero 2 W** | **~90 €** |
+
+Avec un PC dans la maison, le client léger gagne sur tous les tableaux : moins
+cher, trois fois plus rapide, meilleure compréhension, **et sans ventilateur** —
+ce qui compte davantage qu'on ne le croit pour un objet posé sur une table de
+chevet.
+
+Version autonome, ~200 € :
 
 | Pièce | Prix |
 |---|---|
@@ -193,6 +210,40 @@ sudo apt install piper-tts espeak-ng
 python -m kidobot            # Entrée = bouton
 ```
 
+### Le PC de la maison
+
+Sur la machine du placard, deux services : le modèle, et la transcription +
+la voix.
+
+```bash
+# 1. Le cerveau
+llama-server --model models/Qwen3-14B-Q4_K_M.gguf --alias kidobot-local \
+             --host 0.0.0.0 --port 8080 --ctx-size 4096
+
+# 2. Les oreilles et la voix
+python serveur/kidobot_serveur.py \
+    --modele-whisper large-v3 --peripherique cuda --calcul float16 \
+    --voix models/piper/fr_FR-siwis-medium.onnx \
+    --jeton "$(openssl rand -hex 16)"
+```
+
+Puis dans `config/kidobot.toml` de la boîte, trois lignes suffisent :
+
+```toml
+[stt]
+backend = "distant"
+url = "http://192.168.1.20:8100"
+jeton = "le-meme-jeton"
+
+[tts]
+backend = "distant"
+url = "http://192.168.1.20:8100"
+jeton = "le-meme-jeton"
+
+[llm.local]
+url = "http://192.168.1.20:8080"
+```
+
 ### Sur le Raspberry Pi
 
 ```bash
@@ -212,16 +263,19 @@ lancer quand la boîte ne répond plus.
 ## 5. Ce que le code contient
 
 ```
-src/kidobot/
+src/kidobot/                      ← tourne dans la boîte
   app.py         machine à états + pipeline LLM→phrases→voix
   prompts.py     le prompt système  ← le fichier le plus important du dépôt
   securite.py    quotas, horaires, filtre, nettoyage pour la voix
-  llm.py         llama.cpp (HTTP) | API Claude | bascule automatique
-  stt.py         faster-whisper (toujours local)
-  tts.py         piper
+  llm.py         llama.cpp (boîte ou LAN) | API Claude | bascule automatique
+  stt.py         faster-whisper, whisper.cpp, ou serveur distant
+  tts.py         piper, espeak, ou serveur distant + voix de secours
   audio.py       capture + VAD + lecture interruptible + bips
   bouton.py      GPIO / clavier, et les quatre états de la LED
   journal.py     journal parental en JSONL
+
+serveur/                          ← tourne sur le PC de la maison
+  kidobot_serveur.py    transcription + voix, sans dépendance web
 ```
 
 Toutes les briques matérielles ont un double factice, donc `pytest` déroule un

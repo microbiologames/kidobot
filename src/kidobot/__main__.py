@@ -70,6 +70,16 @@ def _question_texte(conf, question: str) -> int:
     return 0
 
 
+def _sonder(url: str) -> tuple[bool, str]:
+    import httpx
+
+    try:
+        r = httpx.get(f"{url}/sante", timeout=3.0)
+    except Exception as exc:
+        return False, f"({type(exc).__name__} - le PC est-il allume ?)"
+    return r.status_code < 500, f"(HTTP {r.status_code})"
+
+
 def _diagnostic(conf) -> int:
     """Verifie chaque brique separement : c'est ce qu'on lance en premier
     quand la boite ne repond plus."""
@@ -87,6 +97,12 @@ def _diagnostic(conf) -> int:
         ligne("micro", bool(entrees), ", ".join(entrees[:2]))
     except Exception as exc:
         ligne("micro", False, str(exc))
+
+    if conf.stt.backend == "distant" or conf.tts.backend == "distant":
+        # Panne numero un du mode client leger : le PC de la maison est eteint.
+        for nom, url in (("serveur stt", conf.stt.url), ("serveur voix", conf.tts.url)):
+            joignable, detail = _sonder(url)
+            ligne(nom, joignable, f"{url} {detail}")
 
     try:
         from . import stt as stt_mod

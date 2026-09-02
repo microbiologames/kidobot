@@ -119,6 +119,45 @@ questions d'enfant deviennent trop souvent fausses pour l'usage.
 modèles de la famille Qwen3 raisonnent avant de répondre par défaut, ce qui
 double le temps de réponse sans rien apporter ici.
 
+## 4 bis. Le mode client léger
+
+Chaque brique — transcription, modèle, voix — a une implémentation locale et
+une implémentation distante derrière la même interface. On peut donc déplacer
+n'importe laquelle sur le PC de la maison sans toucher à `app.py` :
+
+| Brique | Local | Distant |
+|---|---|---|
+| STT | `FasterWhisper`, `WhisperCpp` | `SttDistant` → `POST /stt` |
+| LLM | `LlmLocalHttp` (llama.cpp) | même classe, autre URL |
+| TTS | `Piper`, `Espeak` | `TtsDistant` → `POST /tts` |
+
+Le serveur d'en face est `serveur/kidobot_serveur.py` : un seul fichier, aucune
+dépendance web (la `http.server` de la bibliothèque standard suffit largement
+pour deux requêtes par question), whisper chargé une fois et protégé par un
+verrou, piper appelé en sous-processus.
+
+**Requête/réponse, pas de streaming.** La boîte envoie un WAV complet après le
+relâchement du bouton (~150 Ko pour 5 s). C'est plus simple à écrire, et
+surtout bien plus robuste sur le wifi 2,4 GHz d'un Pi Zero 2 W qu'un flux
+continu qui bégaierait au moindre micro-coupure. La synthèse, elle, reste
+phrase par phrase : chaque aller-retour dure quelques dizaines de millisecondes
+pendant que la phrase précédente est encore prononcée, donc le surcoût réseau
+est entièrement masqué par le pipeline.
+
+Deux détails qui comptent en pratique :
+
+- **`TtsAvecSecours`** bascule sur espeak-ng local quand le serveur ne répond
+  pas, et **ne rebascule pas au milieu d'une réponse** — changer de voix entre
+  deux phrases est plus déroutant que de finir avec la voix moche. Chaque
+  nouvelle question retente la voix principale.
+- **`SttDistant` rend une chaîne vide** plutôt que de lever une exception si le
+  serveur est injoignable : la boîte joue alors « je n'ai pas bien entendu »,
+  ce qui est le bon comportement observable pour un enfant.
+
+Un `jeton` partagé protège les deux routes. Ce n'est pas de la paranoïa : un
+réseau domestique héberge aussi des objets connectés, des invités, et un
+serveur qui transcrit tout ce qu'on lui envoie mérite une porte.
+
 ## 5. Ce qui n'est pas là, et pourquoi
 
 - **Pas de mot-réveil.** Un bouton est plus simple, plus privé, et plus juste
