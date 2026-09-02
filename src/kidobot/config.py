@@ -61,6 +61,7 @@ class Stt:
 class LlmLocal:
     url: str = "http://127.0.0.1:8080"
     modele: str = "kidobot-local"
+    chemin_sante: str = "/health"
     temperature: float = 0.6
     max_tokens: int = 220
     timeout_s: int = 60

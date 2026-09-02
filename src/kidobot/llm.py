@@ -38,11 +38,15 @@ class LlmBase:
 # 1. Local : llama.cpp en serveur, API compatible OpenAI
 # ---------------------------------------------------------------------------
 class LlmLocalHttp(LlmBase):
-    """Parle a `llama-server` (llama.cpp) lance en service systemd.
+    """Parle a un serveur d'inference local exposant `/v1/chat/completions`.
+
+    Trois serveurs repondent a cette description et sont interchangeables ici :
+    `llama-server` (llama.cpp) sur le CPU du Pi, le meme sur un PC du reseau
+    local, et `hailo-ollama` si vous avez un AI HAT+ 2 (voir docs/hardware.md).
 
     On garde le modele dans un processus separe plutot que dans le notre :
-    le chargement des ~2,5 Go de poids prend 10 a 20 s, on ne veut le payer
-    qu'au demarrage de la boite, pas a chaque redemarrage de l'application.
+    le chargement des ~2,5 Go de poids prend 5 a 25 s, on ne veut le payer
+    qu'au demarrage de la machine, pas a chaque redemarrage de l'application.
     """
 
     nom = "local"
@@ -51,11 +55,18 @@ class LlmLocalHttp(LlmBase):
         self.conf = conf
 
     def disponible(self) -> bool:
+        """Le serveur ecoute-t-il ?
+
+        `/health` n'existe que sur llama.cpp ; hailo-ollama et ollama rendent
+        404 sur ce chemin tout en etant parfaitement fonctionnels. Un 404 prouve
+        que quelque chose ecoute et route : c'est ce qu'on veut savoir. Seuls
+        une erreur reseau ou un 5xx signifient reellement "indisponible".
+        """
         try:
-            r = httpx.get(f"{self.conf.url}/health", timeout=2.0)
-            return r.status_code == 200
+            r = httpx.get(f"{self.conf.url}{self.conf.chemin_sante}", timeout=2.0)
         except Exception:
             return False
+        return r.status_code < 500
 
     def repondre(self, systeme: str, question: str) -> Iterator[str]:
         charge = {

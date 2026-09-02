@@ -39,11 +39,78 @@ Le Pi 4 ne fera pas tourner un LLM correctement (comptez 1,5 tok/s sur un 3B),
 mais il fait très bien tourner whisper `base` + piper. Utilisez-le en mode
 `llm.backend = "claude"` ou en client d'un `llama-server` sur le réseau.
 
+## 1 bis. « Et les accélérateurs qu'on branche sur le Pi ? »
+
+C'est la question qu'on se pose tous, et la réponse a changé début 2026.
+
+### Pourquoi la plupart des accélérateurs ne servent à rien ici
+
+La génération de tokens n'est **pas limitée par le calcul**, elle est limitée
+par la **bande passante mémoire** : produire un token demande de relire la
+totalité des poids du modèle depuis la RAM. Un modèle Q4 de 2,6 Go à 10 Go/s
+utiles, ça fait ~4 tokens/seconde, et aucun calcul supplémentaire ne changera
+ça. C'est pour cette raison que :
+
+- **Raspberry Pi AI HAT+ (Hailo-8 / 8L, 13 ou 26 TOPS)** — inutile pour ce
+  projet. Il exécute des modèles de vision compilés (détection d'objets, pose,
+  segmentation). On ne peut pas y charger un Llama. Ses TOPS s'adressent à un
+  goulot d'étranglement que nous n'avons pas.
+- **Coral USB Accelerator (Edge TPU)** — même verdict, en pire : quelques Mo
+  de SRAM, int8, réseaux convolutifs uniquement.
+
+Ajouter des TOPS à un problème de bande passante ne fait rien. C'est la seule
+règle à retenir pour trier les accessoires.
+
+### L'exception : le Raspberry Pi AI HAT+ 2 (janvier 2026)
+
+Celui-ci est différent, et il mérite d'être considéré sérieusement. Hailo-10H,
+40 TOPS INT4, **8 Go de LPDDR4X qui lui sont propres**, ~130 $.
+
+Le point clé n'est pas les TOPS, c'est la RAM embarquée : les poids résident
+sur la carte, et ne traversent donc jamais le lien PCIe x1 du Pi. C'est
+exactement le goulot d'étranglement décrit plus haut, contourné.
+
+Chiffres rapportés (à confirmer, ils viennent de tests tiers) :
+
+| Modèle | AI HAT+ 2 | Pi 5 CPU seul |
+|---|---|---|
+| Llama 3.2 1B | 30-50 tok/s | ~14 tok/s |
+| Qwen2.5 1.5B | 20-35 tok/s | ~10 tok/s |
+| Llama 3.1 8B (HEF natif, expérimental) | ~11 tok/s | ~2 tok/s |
+
+Trois réserves avant de sortir la carte bleue :
+
+1. **Le modèle doit être compilé pour le Hailo** (format HEF). Les modèles
+   passés par une conversion GGUF communautaire tombent à ~2,6 tok/s sur un 3B,
+   soit *moins bien que le CPU du Pi*. Le gain dépend entièrement de la
+   disponibilité d'un HEF natif pour le modèle que vous voulez.
+2. **Le catalogue est étroit.** Celui livré par Raspberry Pi tourne autour de
+   1 à 1,5B ; le catalogue Hailo va jusqu'à 3B/3,8B, et le 8B est marqué
+   expérimental. Un compilateur communautaire existe pour vos propres modèles.
+   Vérifiez ce qui est réellement disponible **en français** avant d'acheter.
+3. **Le KV cache mange les 8 Go.** Avec un modèle de 8B en INT4 (~5,2 Go), il
+   reste de quoi tenir environ 2k tokens de contexte. Sans importance ici
+   (prompt court, pas de mémoire entre les questions), rédhibitoire pour
+   d'autres usages.
+
+**Verdict pour ce projet :** c'est la première fois qu'un bon modèle *dans la
+boîte* devient plausible. À 130 $, la carte coûte le prix d'un mini-PC
+d'occasion qui ferait tourner un 14B plus vite — mais elle tient dans la boîte
+et consomme quelques watts. Si l'autonomie totale compte plus que la qualité
+maximale, c'est le bon achat.
+
+Bonne nouvelle : **rien à changer dans le code.** `hailo-ollama` expose
+`/v1/chat/completions`, donc il suffit de pointer `llm.local.url` dessus
+(port 8000 ou 11434 selon l'installation) et de mettre `chemin_sante = "/"`,
+puisque ce serveur ne connaît pas `/health`. Vous pouvez donc démarrer sans la
+carte et l'ajouter plus tard sans rien réécrire.
+
 ### Si vous voulez vraiment un bon modèle *dans* la boîte
 
 | Option | Modèle utilisable | Vitesse | Prix | Remarque |
 |---|---|---|---|---|
 | Raspberry Pi 5 16 Go | 4B Q4 | ~4-5 tok/s | 130 € | à la limite du confort |
+| Pi 5 + AI HAT+ 2 (Hailo-10H) | 1,5B à 8B INT4 | 11-35 tok/s | +120 € | voir §1 bis : dépend d'un HEF natif |
 | Radxa Rock 5B+ / Orange Pi 5 Plus (RK3588) | 4B à 8B Q4 | ~8-10 tok/s | 130 € | 2× la bande passante mémoire du Pi 5, NPU 6 TOPS via RKLLM, mais logiciel plus capricieux |
 | Jetson Orin Nano Super 8 Go | 8B Q4 | 25-40 tok/s | 250 € | vrai GPU, 102 Go/s ; 15-25 W et un dissipateur qui prend de la place |
 | **Un mini-PC dans un placard** | 14B à 30B | 30-60 tok/s | 0 à 300 € | la boîte devient un client LAN — voir README §1 |

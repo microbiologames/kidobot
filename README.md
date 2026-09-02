@@ -50,7 +50,16 @@ C'est le vrai arbitrage du projet, et il est plus ouvert qu'il n'y paraît.
 | Coût | 0 €/question | 0 €/question | ~0,3 c€/question |
 | Matériel en plus | — | un mini-PC ou le PC du salon | — |
 
-**La colonne du milieu est celle qu'on oublie, et c'est souvent la bonne.**
+À quoi s'ajoute, depuis janvier 2026, une quatrième voie : le **Raspberry Pi
+AI HAT+ 2** (Hailo-10H, 8 Go de RAM dédiée, ~130 $) fait tourner des modèles
+de 1,5B à 8B dans la boîte, à 11-35 tok/s. C'est la première fois qu'un bon
+modèle embarqué devient plausible — avec des réserves sérieuses sur le
+catalogue de modèles disponibles, détaillées dans
+[docs/hardware.md §1 bis](docs/hardware.md). Attention : l'**ancien** AI HAT+
+(Hailo-8/8L) ne sait pas faire tourner de LLM du tout, c'est un accélérateur
+de vision.
+
+**La colonne du milieu reste celle qu'on oublie, et c'est souvent la bonne.**
 Un vieux PC avec 16 Go de RAM dans un placard, `llama-server` en service, et
 la boîte devient un client léger sur le réseau local : la voix de l'enfant ne
 sort pas de la maison, les réponses sont bonnes, et la boîte reste à 200 €.

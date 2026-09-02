@@ -56,3 +56,9 @@ def test_bascule_si_le_serveur_local_tombe(serveur):
     auto = llm.LlmAuto(local, distant)
     assert "ciel" in "".join(auto.repondre("s", "q"))
     assert auto.dernier_utilise == "claude"
+
+
+def test_un_404_sur_la_sonde_ne_signifie_pas_indisponible(serveur):
+    """hailo-ollama et ollama n'ont pas /health : un 404 prouve qu'ils ecoutent."""
+    backend = llm.LlmLocalHttp(LlmLocal(url=serveur, chemin_sante="/pas-de-health"))
+    assert backend.disponible()

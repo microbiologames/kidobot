@@ -62,6 +62,9 @@ backend = "auto"
 # un PC de la maison : rien ne sort du foyer, et la qualite monte d'un cran.
 url = "http://127.0.0.1:8080"
 modele = "kidobot-local"   # doit correspondre a --alias de llama-server
+# /health existe sur llama.cpp. Avec hailo-ollama (AI HAT+ 2), mettre "/" :
+# ce serveur rend 404 sur /health tout en fonctionnant tres bien.
+chemin_sante = "/health"
 temperature = 0.6
 max_tokens = 220
 timeout_s = 60
