@@ -1,0 +1,27 @@
+[Unit]
+Description=Kidobot, la boite a questions
+After=sound.target llama-server.service
+Wants=llama-server.service
+
+[Service]
+Type=simple
+User=kidobot
+Group=gpio
+WorkingDirectory=/home/kidobot/kidobot
+Environment=PYTHONUNBUFFERED=1
+# Cle API pour le repli wifi. Mettre la cle dans un fichier lisible par le
+# seul utilisateur kidobot (chmod 600), jamais dans ce fichier de service.
+EnvironmentFile=-/etc/kidobot.env
+ExecStart=/home/kidobot/kidobot/.venv/bin/python -m kidobot
+Restart=always
+RestartSec=3
+
+# La boite n'a besoin de presque rien : on lui retire le reste.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/kidobot/kidobot/journal
+
+[Install]
+WantedBy=multi-user.target

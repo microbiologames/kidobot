@@ -1,0 +1,24 @@
+# Le modele vit dans son propre processus : on ne paie le chargement des poids
+# qu'au demarrage de la machine, pas a chaque redemarrage de l'application.
+[Unit]
+Description=llama.cpp server (cerveau local de Kidobot)
+After=network.target
+
+[Service]
+Type=simple
+User=kidobot
+WorkingDirectory=/home/kidobot/kidobot
+ExecStart=/opt/llama.cpp/build/bin/llama-server \
+    --model /home/kidobot/kidobot/models/llm/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
+    --alias kidobot-local \
+    --host 127.0.0.1 --port 8080 \
+    --ctx-size 2048 \
+    --threads 4 \
+    --mlock \
+    --no-warmup
+Restart=on-failure
+RestartSec=5
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,97 @@
+# --------------------------------------------------------------------------
+# Configuration Kidobot. Copier en config/kidobot.toml et adapter.
+# --------------------------------------------------------------------------
+
+[enfant]
+prenom = "Lou"
+age = 7
+# Langue de l'enfant (ISO 639-1). Utilisee par la STT et la TTS.
+langue = "fr"
+
+[reponse]
+# Une reponse courte est le coeur du produit : moins d'attente, plus d'ecoute.
+max_mots = 60
+# Toujours terminer par une petite question pour relancer la curiosite.
+relance = true
+
+# --------------------------------------------------------------------------
+# Materiel
+# --------------------------------------------------------------------------
+[bouton]
+# "gpio" sur le Raspberry Pi, "clavier" pour tester sur un portable (touche Entree).
+backend = "gpio"
+broche = 17          # BCM. GPIO17 = bouton embarque du ReSpeaker 2-Mics HAT.
+pull_up = true
+# Mode "maintien" : on parle tant que le bouton est enfonce (le plus lisible
+# pour un enfant). Mode "impulsion" : un appui demarre, le silence arrete.
+mode = "maintien"
+
+[leds]
+backend = "gpio"     # "gpio" | "aucun"
+broche = 27          # LED du bouton arcade (via transistor ou resistance).
+
+[audio]
+peripherique_entree = ""    # "" = peripherique par defaut. Ex: "seeed-2mic-voicecard"
+peripherique_sortie = ""
+frequence = 16000
+# Detection de fin de parole (mode impulsion uniquement).
+vad_agressivite = 2         # 0..3, 3 = coupe le plus vite
+silence_fin_ms = 900
+duree_max_question_s = 15
+
+# --------------------------------------------------------------------------
+# Cerveau
+# --------------------------------------------------------------------------
+[stt]
+backend = "faster-whisper"  # "faster-whisper" | "whisper-cpp" | "factice"
+modele = "small"            # tiny | base | small  (small = bon compromis sur Pi 5)
+calcul = "int8"
+# Uniquement pour backend = "whisper-cpp"
+binaire = "/opt/whisper.cpp/build/bin/whisper-cli"
+modele_gguf = "/opt/whisper.cpp/models/ggml-small-q5_1.bin"
+
+[llm]
+# "local"  -> llama.cpp (llama-server) dans la boite, sans reseau
+# "claude" -> API Anthropic par wifi (repli, plus rapide et plus fin)
+# "auto"   -> local, et bascule sur claude si le local est indisponible
+backend = "auto"
+
+[llm.local]
+# 127.0.0.1 = le modele tourne DANS la boite.
+# Une IP du reseau local (ex "http://192.168.1.20:8080") = le modele tourne sur
+# un PC de la maison : rien ne sort du foyer, et la qualite monte d'un cran.
+url = "http://127.0.0.1:8080"
+modele = "kidobot-local"   # doit correspondre a --alias de llama-server
+temperature = 0.6
+max_tokens = 220
+timeout_s = 60
+
+[llm.claude]
+modele = "claude-opus-5"
+effort = "low"              # low = latence minimale, suffisant pour du Q/R enfant
+max_tokens = 400
+timeout_s = 30
+# La cle se lit dans l'environnement : ANTHROPIC_API_KEY
+
+[tts]
+backend = "piper"           # "piper" | "espeak" | "factice"
+binaire = "piper"
+voix = "models/piper/fr_FR-siwis-medium.onnx"
+vitesse = 1.0
+
+# --------------------------------------------------------------------------
+# Garde-fous
+# --------------------------------------------------------------------------
+[securite]
+# Sujets renvoyes vers un adulte plutot que traites par le modele.
+rediriger_vers_adulte = true
+questions_max_par_jour = 40
+# Heures creuses : la boite repond "il est tard" en dehors de cette plage.
+heure_debut = 7
+heure_fin = 20
+
+[journal]
+# Journal parental : toutes les questions/reponses en clair, lisibles par
+# les parents. C'est aussi ce qui rend l'objet acceptable a la maison.
+actif = true
+dossier = "journal"
