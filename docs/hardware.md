@@ -32,6 +32,9 @@ Plancher : **Raspberry Pi Zero 2 W**, 15-18 €. Elle capte le son, l'envoie au
 PC, et joue ce qui revient. C'est `serveur/kidobot_serveur.py` qui fait le
 travail à l'autre bout.
 
+En pratique cette carte est souvent en rupture ; le Pi 3 B+ est un repli
+supérieur pour quelques euros de plus (voir §1 ter).
+
 **Et c'est meilleur sur presque tous les axes, pas seulement moins cher :**
 
 - **La latence s'effondre.** whisper était le terme dominant du budget (2 s sur
@@ -87,16 +90,18 @@ déjà dans un tiroir » partout où c'est possible.
 
 | # | Pièce | Prix |
 |---|---|---|
-| 1 | Raspberry Pi Zero 2 W (avec header soudé) | 18 € |
-| 2 | ReSpeaker 2-Mics Pi HAT v2 | 17 € |
-| 3 | Haut-parleur 3 W 4 Ω, ⌀ 50 mm | 5 € |
-| 4 | Bouton arcade lumineux 60 mm | 6 € |
-| 5 | microSD A2 32 Go | 8 € |
-| 6 | Alimentation micro-USB 2,5 A | 8 € |
-| 7 | Boîtier contreplaqué 6 mm + visserie | 25 € |
+| # | Pièce | Prix |
+|---|---|---|
+| 1 | Raspberry Pi 3 B+ 1 Go (ou Zéro 2 W WH si dispo) | 47,70 € |
+| 2 | Carte son Hi-Fi HAT WM8960 — haut-parleurs inclus | 21,55 € |
+| 3 | Bouton arcade lumineux 60 mm | 6 € |
+| 4 | microSD A2 32 Go | 8 € |
+| 5 | Alimentation micro-USB 2,5 A | 10 € |
+| 6 | Boîtier contreplaqué 6 mm + visserie | 25 € |
 
-**Total ≈ 87 €**, sans ventilateur, sans SSD, sans dissipateur. Le PC de la
-maison fait la transcription, le modèle et la synthèse.
+**Total ≈ 118 €**, sans ventilateur, sans SSD. Le PC de la maison fait la
+transcription, le modèle et la synthèse. Avec un Zéro 2 W à 19,50 € au lieu du
+Pi 3 B+, on retombe à ~90 € — voir §1 ter pour l'état des stocks.
 
 ### Version autonome — ~200 €
 
@@ -121,6 +126,62 @@ Pour l'étape 1, quand vous voulez juste un objet qui marche ce week-end :
 n'importe quelle Pi qui traîne, un micro USB (ou une vieille webcam), une
 mini-enceinte, un bouton, et une boîte à chaussures. En mode client léger,
 même une Pi 3 fait l'affaire.
+
+## 1 ter. Approvisionnement réel (relevé du 1er novembre 2026, Kubii)
+
+Les cartes Raspberry Pi anciennes sont en pénurie chronique. État constaté :
+
+| Pièce | Prix | Stock |
+|---|---|---|
+| Raspberry Pi Zéro 2 W / WH (carte nue) | 19,50 € | **rupture** |
+| Raspberry Pi 3 A+ | 28,50 € | **rupture** |
+| Kit Budget Zéro 2 W/WH (carte + microSD + dissipateur + câbles) | 46,50 € | en stock (42) |
+| **Raspberry Pi 3 B+ 1 Go** | 47,70 € | **en stock (542)** |
+| **Carte son Hi-Fi HAT WM8960** (Waveshare, réf. WV15668) | 21,55 € | **en stock (9)** |
+
+Vérifiez avant de commander : ces chiffres bougent à la semaine.
+
+### Le Pi 3 B+ est le bon repli, et pas un pis-aller
+
+À prix égal avec le kit Zéro 2 W, il offre 1 Go de RAM au lieu de 512 Mo,
+1,4 GHz au lieu de 1 GHz, et du wifi bibande 2,4 **et 5 GHz**. Deux
+conséquences concrètes :
+
+- le 5 GHz supprime la seule réserve qu'on avait sur le Zéro 2 W (bande
+  2,4 GHz encombrée en appartement) ;
+- avec 1 Go et 1,4 GHz, **piper tourne localement** sur une voix `low`. La voix
+  de secours cesse d'être espeak-ng : la boîte dégrade proprement quand le PC
+  est éteint, et le mode autonome reste atteignable plus tard.
+
+Il est plus grand (85 × 56 mm) et consomme 3-4 W au lieu de 2. Sans importance
+dans un boîtier de 150 × 120 × 90 mm, et **toujours sans ventilateur** : en
+client léger la carte est inactive l'essentiel du temps, un dissipateur passif
+suffit.
+
+### La carte son WM8960 remplace le ReSpeaker
+
+C'est la bonne nouvelle de ce relevé. Le ReSpeaker 2-Mics Pi HAT n'est plus
+distribué en France, et son pilote `seeed-voicecard` est réputé capricieux
+selon les versions de noyau. La carte Waveshare WM8960 utilise **le même codec
+audio**, et apporte :
+
+- deux microphones MEMS (gauche/droite) ;
+- une sortie haut-parleur 1 W par canal en 8 Ω, **avec deux haut-parleurs
+  fournis** — la ligne « haut-parleur 3 W » de la nomenclature devient inutile ;
+- une prise jack 3,5 mm ;
+- compatibilité 40 broches, sauf Raspberry Pi 5 — ce qui tombe bien, on vise
+  un Pi 3 ou un Zéro.
+
+Elle n'a **pas** de bouton embarqué, contrairement au ReSpeaker. C'est un
+avantage ici : GPIO17 reste libre, donc le bouton arcade s'y câble sans
+partage, exactement comme le prévoit la configuration par défaut
+(`bouton.broche = 17`). La carte occupe l'I2S (GPIO18-21) et l'I2C (GPIO2-3),
+qui ne sont pas utilisés par ce dépôt.
+
+Plus que 9 exemplaires au moment du relevé : c'est la pièce rare du panier,
+commandez-la en premier.
+
+---
 
 ## 1 bis. « Et les accélérateurs qu'on branche sur le Pi ? »
 
@@ -207,7 +268,7 @@ C'est la seule règle à retenir pour arbitrer entre deux cartes.
 
 ## 2. Câblage
 
-### Avec le ReSpeaker 2-Mics HAT (recommandé)
+### Avec une carte son 40 broches (WM8960 recommandée, voir §1 ter)
 
 Le HAT s'empile sur le Pi et apporte déjà tout l'audio. Il occupe :
 
@@ -215,8 +276,8 @@ Le HAT s'empile sur le Pi et apporte déjà tout l'audio. Il occupe :
 |---|---|---|
 | I2S (audio) | GPIO18, 19, 20, 21 | codec WM8960 |
 | I2C (config codec) | GPIO2, GPIO3 | codec |
-| Bouton embarqué | **GPIO17** | bouton poussoir du HAT |
-| LED APA102 ×3 | GPIO5 (data), GPIO6 (clock), GPIO13 | anneau RGB |
+| Bouton embarqué | **GPIO17** | ReSpeaker seulement — libre sur la WM8960 |
+| LED APA102 ×3 | GPIO5, GPIO6, GPIO13 | ReSpeaker seulement |
 
 Il ne reste plus qu'à câbler le gros bouton arcade :
 
@@ -226,9 +287,10 @@ Il ne reste plus qu'à câbler le gros bouton arcade :
      borne 2 ──────────────── GND    (broche physique 9)
 ```
 
-En parallèle du bouton du HAT : les deux fonctionnent, ce qui est pratique pour
-tester sans ouvrir la boîte. `gpiozero` active la résistance de tirage interne,
-aucun composant externe n'est nécessaire.
+Avec la carte WM8960, GPIO17 est entièrement libre : rien à partager.
+`gpiozero` active la résistance de tirage interne, aucun composant externe
+n'est nécessaire. (Sur un ReSpeaker, le bouton arcade se met simplement en
+parallèle du bouton embarqué, et les deux fonctionnent.)
 
 Pour la **LED du bouton arcade** (typiquement 20-30 mA, au-delà des 16 mA que
 tolère une broche GPIO), passez par un transistor :
